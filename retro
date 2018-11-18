@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+from client import save_play
+import gym
+import retro
+
+
+class Donezo(gym.Wrapper):
+    """
+    Use deltas in max(X) as the reward, rather than deltas
+    in X. This way, agents are not discouraged too heavily
+    from exploring backwards if there is no way to advance
+    head-on in the level.
+    """
+    def __init__(self, env):
+        super(gym.Wrapper, self).__init__()
+        self._cur_x = 0
+        self._max_x = 0
+        t_env = env
+        while not hasattr(t_env, 'em'):
+            print(t_env)
+            t_env = env.env
+        self.emu = env.em
+        self.frames = []
+        self.actions = []
+        self.meta_data = {}
+
+    def reset(self, **kwargs): # pylint: disable=E0202
+        '''
+        if you want play a random game or state, you can
+        modify reset function
+        '''
+        self._cur_x = 0
+        self._max_x = 0
+        return self.env.reset(**kwargs)
+
+    def step(self, action): # pylint: disable=E0202
+        obs, rew, done, info = self.env.step(action)
+        if done:
+            save_play(self.frames, self.actions, self.meta_data)
+        return obs, rew, done, info
+
+env = Donezo(retro.make("SuperMarioBros-Nes", "Level1-1", scenario='deep_thought'))
