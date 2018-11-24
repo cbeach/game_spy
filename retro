@@ -1,28 +1,210 @@
 #!/usr/bin/env python
-from client import save_play
+import functools
+import json
+import math
+import os
+import random
+import sys
+import time
+from itertools import combinations
+from glob import glob
+
 import gym
 import retro
+import grpc
+import cv2
+import numpy as np
+
+from google.protobuf.json_format import MessageToJson
+import common_pb2_grpc
+import common_pb2
+import controller
+import deep_thought_pb2_grpc
+import deep_thought_pb2
+import nes_pb2_grpc
+import nes_pb2
+import snes_pb2_grpc
+import snes_pb2
 
 
-class Donezo(gym.Wrapper):
+def get_input_state(controller, platform='nes', frame_rate=math.inf):
+    if platform == 'nes':
+        while True:
+            time.sleep(1 / frame_rate)
+            ms = deep_thought_pb2.MachineState(
+                nes_console_state=nes_pb2.NESConsoleState(
+                    player1_input=controller.state(),
+                    game=common_pb2.Game(
+                        name="Super Mario Brothers 3",
+                        path="/home/app/roms/super_mario_bros_3.nes"
+                    )
+                )
+            )
+            yield ms
+    elif platform == 'snes':
+        print('snes controller')
+        while True:
+            time.sleep(1 / frame_rate)
+            ms = deep_thought_pb2.MachineState(
+                snes_console_state=snes_pb2.SNESConsoleState(
+                    player1_input=controller.state(),
+                )
+            )
+            yield ms
+
+def save_play(frames, actions, meta_data, info, as_pngs=False):
+    data_dir = os.environ['DATA_DIR']
+    play_dir = os.path.join(data_dir, 'game_playing/play_data')
+    plays = []
+    for i in glob(play_dir + '/*'):
+        plays.append(int(os.path.basename(i)))
+    if len(plays) == 0:
+        latest = 1
+    else:
+        latest = max(plays) + 1
+    new_play_dir = os.path.join(play_dir, str(latest))
+    os.mkdir(new_play_dir)
+
+    # Write the frames
+    if as_pngs is True:
+        for i, f in enumerate(frames):
+            cv2.imwrite(os.path.join(new_play_dir, '{}.png'.format(i)), f)
+    else:
+        np.savez_compressed(os.path.join(new_play_dir, 'frames'), np.array(frames))
+    print('Done saving frames at {}'.format(os.path.join(new_play_dir, 'frames')))
+
+    # Write the actions
+    with open(os.path.join(new_play_dir, 'actions'), 'w') as fp:
+        np.savez_compressed(os.path.join(new_play_dir, 'actions'), np.array(actions))
+    print('Done saving actions')
+    with open(os.path.join(new_play_dir, 'info.json'), 'w') as fp:
+        json.dump(info, fp)
+    print('Done saving info')
+
+
+    # Write the meta data
+    with open(os.path.join(new_play_dir, 'meta_data.json'), 'w') as fp:
+        json.dump(meta_data, fp)
+
+
+class ManualNESDiscretizer(gym.ActionWrapper):
     """
-    Use deltas in max(X) as the reward, rather than deltas
-    in X. This way, agents are not discouraged too heavily
-    from exploring backwards if there is no way to advance
-    head-on in the level.
+    Wrap a gym-retro environment and make it use discrete
+    actions for the Sonic game.
     """
     def __init__(self, env):
-        super(gym.Wrapper, self).__init__()
+        super(ManualNESDiscretizer, self).__init__(env)
+
+        self.buttons = ['B', None, 'SELECT', 'START', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'A']
+        temp_btns = self.buttons.copy()
+        temp_btns.remove(None)
+        actions = []
+        for i in range(1, len(temp_btns)):
+            actions.extend(list(combinations(temp_btns, i)))
+        actions.append((None,))
+
+        self._actions = []
+        for action in actions:
+            arr = np.array([False] * len(self.buttons))
+            for button in action:
+                arr[self.buttons.index(button)] = True
+            self._actions.append(arr)
+        self.action_space = gym.spaces.Discrete(len(self._actions))
+        self.env = env
+
+    def controller_state_to_action(self, c_state):
+        arr = np.array([False] * len(self.buttons))
+        for b in self.buttons:
+            if b in ['UP', 'DOWN', 'LEFT', 'RIGHT']:
+                if b is not None and hasattr(c_state.dpad, b.lower()):
+                    if getattr(c_state.dpad, b.lower()):
+                        arr[self.buttons.index(b)] = True
+            else:
+                if b is not None and hasattr(c_state, b.lower()):
+                    if getattr(c_state, b.lower()):
+                        arr[self.buttons.index(b)] = True
+        return arr
+
+    def action(self, a): # pylint: disable=W0221
+        return self._actions[a].copy()
+
+    def step(self, action): # pylint: disable=E0202
+        obs, rew, done, info = self.env.step(action)
+        return obs, rew, done, info
+
+
+class ManualSNESDiscretizer(gym.ActionWrapper):
+    """
+    Wrap a gym-retro environment and make it use discrete
+    actions for the Sonic game.
+    """
+    def __init__(self, env):
+        super(ManualSNESDiscretizer, self).__init__(env)
+
+        self.buttons = ['B', None, 'SELECT', 'START', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'A', 'X', 'Y', 'L' 'R']
+        temp_btns = self.buttons.copy()
+        temp_btns.remove(None)
+        #temp_btns = ['B', 'SELECT', 'START', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'A']
+        actions = []
+        for i in range(1, len(temp_btns)):
+            actions.extend(list(combinations(temp_btns, i)))
+        actions.append((None,))
+
+        self._actions = []
+        for action in actions:
+            arr = np.array([False] * len(self.buttons))
+            for button in action:
+                arr[self.buttons.index(button)] = True
+            self._actions.append(arr)
+        self.action_space = gym.spaces.Discrete(len(self._actions))
+        self.env = env
+
+    def controller_state_to_action(self, c_state):
+        arr = np.array([False] * len(self.buttons))
+        for b in self.buttons:
+            if b in ['UP', 'DOWN', 'LEFT', 'RIGHT']:
+                if b is not None and hasattr(c_state.dpad, b.lower()):
+                    if getattr(c_state.dpad, b.lower()):
+                        arr[self.buttons.index(b)] = True
+            else:
+                if b is not None and hasattr(c_state, b.lower()):
+                    if getattr(c_state, b.lower()):
+                        arr[self.buttons.index(b)] = True
+        return arr
+
+    def action(self, a): # pylint: disable=W0221
+        return self._actions[a].copy()
+
+    def step(self, action): # pylint: disable=E0202
+        obs, rew, done, info = self.env.step(action)
+        return obs, rew, done, info
+
+
+class Dunzo(gym.Wrapper):
+    """
+    Save the gameplay when the player gets a game over, or the frame stack becomes too large.
+    I define too large as over 10GB.
+    """
+    def __init__(self, env, game='SuperMarioBros-Nes', state='Level1-1'):
+        super(Dunzo, self).__init__(env)
+        env.reset()
+        self.start_time = time.time()
         self._cur_x = 0
         self._max_x = 0
         t_env = env
         while not hasattr(t_env, 'em'):
-            print(t_env)
-            t_env = env.env
-        self.emu = env.em
+            t_env = t_env.env
+        self.emu = t_env.em
         self.frames = []
         self.actions = []
-        self.meta_data = {}
+        self.info = []
+        self.meta_data = {
+            'game': {
+                'name': game,
+                'state': state,
+            },
+            'frame_count': 0,
+        }
 
     def reset(self, **kwargs): # pylint: disable=E0202
         '''
@@ -35,8 +217,87 @@ class Donezo(gym.Wrapper):
 
     def step(self, action): # pylint: disable=E0202
         obs, rew, done, info = self.env.step(action)
-        if done:
-            save_play(self.frames, self.actions, self.meta_data)
+        screen = self.emu.get_screen()
+        self.frames.append(screen)
+        self.actions.append(action)
+        self.info.append(info)
+        self.meta_data['frame_count'] += 1
+        if done or 10 * 2**30 < (len(self.frames) * functools.reduce(lambda x, y: x * y, screen.shape)):
+            print('saving data and reseting environment')
+            print('total play time: {}'.format(time.time() - self.start_time))
+            save_play(self.frames, self.actions, self.info, self.meta_data)
+            self.frames = []
+            self.actions = []
+            self.meta_data['frame_count'] = 0
+            self.reset()
+            self.start_time = time.time()
         return obs, rew, done, info
 
-env = Donezo(retro.make("SuperMarioBros-Nes", "Level1-1", scenario='deep_thought'))
+    def controller_state_to_action(self, c_state):
+        return self.env.controller_state_to_action(c_state)
+
+games = list(filter(lambda x: x.endswith('-Nes'), retro.data.list_games()))
+game = "SuperMarioWorld-Snes"
+platform = game.split('-')[-1].lower()
+
+if platform == 'nes':
+    env = ManualNESDiscretizer(retro.make(game))
+elif platform == 'snes':
+    env = ManualSNESDiscretizer(retro.make(game))
+env = Dunzo(env)
+
+def play_game_stream(game, platform='nes', event_handler=None):
+    device = controller.select_device()
+    cel = controller.ControllerEventLoop(device, event_handler)
+    cel.start()
+
+    scale_factor = 4
+    counter = 0
+    frames = []
+    actions = []
+    debounce = False
+
+    for i, c_state in enumerate(get_input_state(event_handler, platform=platform)):
+        then = time.time()
+        counter += 1
+        action = 0
+        img = env.emu.get_screen()
+        #img = np.reshape(img, (240, 256, 4))
+        #img = img[:, :, :-1]
+        if platform.lower() == 'nes':
+            act = c_state.nes_console_state.player1_input
+        elif platform.lower() == 'snes':
+            act = c_state.snes_console_state.player1_input
+        action = env.controller_state_to_action(act)
+        if (time.time() - then) < (1.0/120):
+            time.sleep((1.0 / 70.0) - (time.time() - then))
+        env.step(action)
+        frames.append(img)
+        actions.append(act)
+
+        #if act.select is True and debounce is False:
+        #    debounce = True
+        #    meta_data = {
+        #        'game': {
+        #            'name': game.name,
+        #            'path': game.path,
+        #        },
+        #        'frame_count': counter,
+        #    }
+        #    save_play(frames, actions, meta_data)
+        #    frames = []
+        #    actions = []
+        #elif act.select is False and debounce is True:
+        #    debounce = False
+        cv2.imshow('game session', cv2.resize(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), (int(img.shape[0] * scale_factor), int(img.shape[1] * scale_factor))))
+        if cv2.waitKey(1) == 27:
+            break
+
+
+if __name__ == '__main__':
+    if platform.lower() == 'nes':
+        con = controller.NESController()
+    if platform.lower() == 'snes':
+        con = controller.SNESController()
+    play_game_stream(game, platform.lower(), event_handler=con)
+

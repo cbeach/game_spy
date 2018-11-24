@@ -15,15 +15,16 @@ _sym_db = _symbol_database.Default()
 
 import common_pb2 as common__pb2
 import nes_pb2 as nes__pb2
+import snes_pb2 as snes__pb2
 
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='deep_thought.proto',
   package='org.beachc.deep_thought',
   syntax='proto3',
-  serialized_pb=_b('\n\x12\x64\x65\x65p_thought.proto\x12\x17org.beachc.deep_thought\x1a\x0c\x63ommon.proto\x1a\tnes.proto\"\x84\x02\n\nVideoFrame\x12\x36\n\traw_frame\x18\x01 \x01(\x0b\x32!.org.beachc.deep_thought.RawRGB32H\x00\x12:\n\x0bsprite_list\x18\x02 \x01(\x0b\x32#.org.beachc.deep_thought.SpriteListH\x00\x12<\n\x0cregion_graph\x18\x03 \x01(\x0b\x32$.org.beachc.deep_thought.RegionGraphH\x00\x12<\n\rmachine_state\x18\x04 \x01(\x0b\x32%.org.beachc.deep_thought.MachineStateB\x06\n\x04\x64\x61ta\"b\n\x0cMachineState\x12I\n\x11nes_console_state\x18\x01 \x01(\x0b\x32,.org.beachc.deep_thought.nes.NESConsoleStateH\x00\x42\x07\n\x05state\"N\n\x08RawRGB32\x12\x34\n\x05shape\x18\x01 \x01(\x0b\x32%.org.beachc.deep_thought.common.Shape\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\">\n\nSpriteList\x12\x30\n\x07sprites\x18\x01 \x03(\x0b\x32\x1f.org.beachc.deep_thought.Sprite\">\n\x06Sprite\x12\x34\n\x05shape\x18\x01 \x01(\x0b\x32%.org.beachc.deep_thought.common.Shape\"\r\n\x0bRegionGraph2g\n\x08\x45mulator\x12[\n\tplay_game\x12%.org.beachc.deep_thought.MachineState\x1a#.org.beachc.deep_thought.VideoFrame(\x01\x30\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x12\x64\x65\x65p_thought.proto\x12\x17org.beachc.deep_thought\x1a\x0c\x63ommon.proto\x1a\tnes.proto\x1a\nsnes.proto\"\x84\x02\n\nVideoFrame\x12\x36\n\traw_frame\x18\x01 \x01(\x0b\x32!.org.beachc.deep_thought.RawRGB32H\x00\x12:\n\x0bsprite_list\x18\x02 \x01(\x0b\x32#.org.beachc.deep_thought.SpriteListH\x00\x12<\n\x0cregion_graph\x18\x03 \x01(\x0b\x32$.org.beachc.deep_thought.RegionGraphH\x00\x12<\n\rmachine_state\x18\x04 \x01(\x0b\x32%.org.beachc.deep_thought.MachineStateB\x06\n\x04\x64\x61ta\"\xb0\x01\n\x0cMachineState\x12I\n\x11nes_console_state\x18\x01 \x01(\x0b\x32,.org.beachc.deep_thought.nes.NESConsoleStateH\x00\x12L\n\x12snes_console_state\x18\x02 \x01(\x0b\x32..org.beachc.deep_thought.snes.SNESConsoleStateH\x00\x42\x07\n\x05state\"N\n\x08RawRGB32\x12\x34\n\x05shape\x18\x01 \x01(\x0b\x32%.org.beachc.deep_thought.common.Shape\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\x0c\">\n\nSpriteList\x12\x30\n\x07sprites\x18\x01 \x03(\x0b\x32\x1f.org.beachc.deep_thought.Sprite\">\n\x06Sprite\x12\x34\n\x05shape\x18\x01 \x01(\x0b\x32%.org.beachc.deep_thought.common.Shape\"\r\n\x0bRegionGraph2g\n\x08\x45mulator\x12[\n\tplay_game\x12%.org.beachc.deep_thought.MachineState\x1a#.org.beachc.deep_thought.VideoFrame(\x01\x30\x01\x62\x06proto3')
   ,
-  dependencies=[common__pb2.DESCRIPTOR,nes__pb2.DESCRIPTOR,])
+  dependencies=[common__pb2.DESCRIPTOR,nes__pb2.DESCRIPTOR,snes__pb2.DESCRIPTOR,])
 
 
 
@@ -78,8 +79,8 @@ _VIDEOFRAME = _descriptor.Descriptor(
       name='data', full_name='org.beachc.deep_thought.VideoFrame.data',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=73,
-  serialized_end=333,
+  serialized_start=85,
+  serialized_end=345,
 )
 
 
@@ -93,6 +94,13 @@ _MACHINESTATE = _descriptor.Descriptor(
     _descriptor.FieldDescriptor(
       name='nes_console_state', full_name='org.beachc.deep_thought.MachineState.nes_console_state', index=0,
       number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='snes_console_state', full_name='org.beachc.deep_thought.MachineState.snes_console_state', index=1,
+      number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -112,8 +120,8 @@ _MACHINESTATE = _descriptor.Descriptor(
       name='state', full_name='org.beachc.deep_thought.MachineState.state',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=335,
-  serialized_end=433,
+  serialized_start=348,
+  serialized_end=524,
 )
 
 
@@ -150,8 +158,8 @@ _RAWRGB32 = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=435,
-  serialized_end=513,
+  serialized_start=526,
+  serialized_end=604,
 )
 
 
@@ -181,8 +189,8 @@ _SPRITELIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=515,
-  serialized_end=577,
+  serialized_start=606,
+  serialized_end=668,
 )
 
 
@@ -212,8 +220,8 @@ _SPRITE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=579,
-  serialized_end=641,
+  serialized_start=670,
+  serialized_end=732,
 )
 
 
@@ -236,8 +244,8 @@ _REGIONGRAPH = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=643,
-  serialized_end=656,
+  serialized_start=734,
+  serialized_end=747,
 )
 
 _VIDEOFRAME.fields_by_name['raw_frame'].message_type = _RAWRGB32
@@ -254,9 +262,13 @@ _VIDEOFRAME.oneofs_by_name['data'].fields.append(
   _VIDEOFRAME.fields_by_name['region_graph'])
 _VIDEOFRAME.fields_by_name['region_graph'].containing_oneof = _VIDEOFRAME.oneofs_by_name['data']
 _MACHINESTATE.fields_by_name['nes_console_state'].message_type = nes__pb2._NESCONSOLESTATE
+_MACHINESTATE.fields_by_name['snes_console_state'].message_type = snes__pb2._SNESCONSOLESTATE
 _MACHINESTATE.oneofs_by_name['state'].fields.append(
   _MACHINESTATE.fields_by_name['nes_console_state'])
 _MACHINESTATE.fields_by_name['nes_console_state'].containing_oneof = _MACHINESTATE.oneofs_by_name['state']
+_MACHINESTATE.oneofs_by_name['state'].fields.append(
+  _MACHINESTATE.fields_by_name['snes_console_state'])
+_MACHINESTATE.fields_by_name['snes_console_state'].containing_oneof = _MACHINESTATE.oneofs_by_name['state']
 _RAWRGB32.fields_by_name['shape'].message_type = common__pb2._SHAPE
 _SPRITELIST.fields_by_name['sprites'].message_type = _SPRITE
 _SPRITE.fields_by_name['shape'].message_type = common__pb2._SHAPE
@@ -318,8 +330,8 @@ _EMULATOR = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=658,
-  serialized_end=761,
+  serialized_start=749,
+  serialized_end=852,
   methods=[
   _descriptor.MethodDescriptor(
     name='play_game',
